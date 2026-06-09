@@ -1,0 +1,14 @@
+#Local environment variables (CRITICAL)
+.env
+
+#Virtual environments - uv was used, but you do you
+.venv/
+venv/
+env/
+
+#Compiled files
+__pycache__/
+*.pyc
+
+#macOS crap
+.DS_Store
