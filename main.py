@@ -1,6 +1,7 @@
 import os
 import requests
 from dotenv import load_dotenv
+from src.models import SearchResult
 
 # Open and load .env variables into temp memory
 load_dotenv()
@@ -32,8 +33,23 @@ try:
     # If we connected successfully...
     if plex_response.status_code == 200:
         data = plex_response.json()
-        print("Great success! Here is the raw result:")
-        print(data)
+        print("Great success! Here are the results:")
+        # Clean up `data` into something legible
+        parsed_results = [] # Create a list to hold the results
+        hubs = data["MediaContainer"]["Hub"] # media information is stored here, make a list of all `Hub`'s
+        for hub in hubs:
+            if "Metadata" in hub: # Check hub isn't empty so we don't cause a crash
+                for media in hub["Metadata"]:
+                    media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
+                    media_year = media.get("year", "Unknown")
+                    media_type = media.get("type", "Unknown")
+                    # Use our `SearchResult` class to hold organized data
+                    media_result = SearchResult(title=media_title, year=media_year, media_type=media_type, source="Plex")
+                    # Add to our `parsed_results` list
+                    parsed_results.append(media_result)
+        for result in parsed_results:
+            print(f"• {result.title} ({result.year}) - {result.media_type} [{result.source}]")
+
     # ...and if we connected but there was an error
     else:
         print(f"Whoopsie! Server error... \nStatus code: {plex_response.status_code}")
