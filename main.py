@@ -1,91 +1,26 @@
-import os
-import requests
-from dotenv import load_dotenv
-from src.models import SearchResult
+from src.plex import search_plex
 
-# Open and load .env variables into temp memory
-load_dotenv()
+def main():
+    # Intro label
+    print("_____________________________________")
+    print("--Welcome to Universal Media Search--")
+    print("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾")
+    # Get user search terms
+    user_search = input("Search by movie or show title: ")
+    print(f'\nSearching for "{user_search}"\n')
 
-# Grab .env variables out of temp memory and assign locally
-PLEX_URL = os.getenv("PLEX_URL")
-PLEX_TOKEN = os.getenv("PLEX_TOKEN")
-
-# Set up instructions for using 'requests' when accessing the Plex server - needs to be dictionary
-plex_headers = {
-    "Accept": "application/json",
-    "X-Plex-Token": PLEX_TOKEN
-}
-
-# Search filter setup - needs to be dictionary
-search_parameters = {
-    "query": "Batman",  # hardcoded search for testing
-    "limit": 5          # limit results in case there are too many, ****ADJUST LATER****
-}
-
-# Setup plex search url and console notification
-plex_url = f"{PLEX_URL}/hubs/search"
-print(f'Attempting Plex search for "{search_parameters["query"]}"...')
-
-# Account for crashes while connecting
-try:
-    # Attempt to connect and retrieve data from Plex server
-    plex_response = requests.get(plex_url, headers=plex_headers, params=search_parameters, timeout=6)
-    # If we connected successfully...
-    if plex_response.status_code == 200:
-        data = plex_response.json()
-        print("Great success! Here are the results:")
-        # Clean up `data` into something legible
-        parsed_results = [] # Create a list to hold the results
-        hubs = data["MediaContainer"]["Hub"] # media information is stored here, make a list of all `Hub`'s
-        for hub in hubs:
-            if "Metadata" in hub: # Check hub isn't empty so we don't cause a crash
-                for media in hub["Metadata"]:
-                    media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
-                    media_year = media.get("year", "Unknown")
-                    media_type = media.get("type", "Unknown")
-                    # Use our `SearchResult` class to hold organized data
-                    media_result = SearchResult(title=media_title, year=media_year, media_type=media_type, source="Plex")
-                    # Add to our `parsed_results` list
-                    parsed_results.append(media_result)
-        for result in parsed_results:
+    # Search Plex - get results from our plex.py module
+    plex_results = search_plex(user_search)
+    if plex_results:
+        print("Plex Results\n‾‾‾‾‾‾‾‾‾‾‾‾")
+        for result in plex_results:
             print(f"• {result.title} ({result.year}) - {result.media_type} [{result.source}]")
-
-    # ...and if we connected but there was an error
+        print("_____________________________________")
     else:
-        print(f"Whoopsie! Server error... \nStatus code: {plex_response.status_code}")
+        print("• No results found on Plex...")
     
-# Error handling for when we fail to connect
-except requests.exceptions.ConnectTimeout:
-    print("Error: Connection timed out! Check if server is on and using the right IP")
-except requests.exceptions.RequestException as e:
-    print(f"Error: {e}")
+
+if __name__ == "__main__":
+    main()
 
 
-
-
-
-
-# ****REMOVE AFTER SEARCH TEST****
-# Previous "server knock" test
-
-# # Set up plex url and console notification
-# plex_url = f"{PLEX_URL}/identity"
-# print(f"Attempting to connect to: {plex_url}")
-
-# # Account for crashes while connecting
-# try:
-#     # Attempt to connect and retrieve data from Plex server
-#     plex_response = requests.get(plex_url, headers=plex_headers, timeout=6)
-#     # If we connected sucessfully...
-#     if plex_response.status_code == 200:
-#         print("Great success! Here is the server data:")
-#         print(plex_response.json())
-#     # ...and if we connected but there was an error
-#     else:
-#         print(f"Whoops! Server error... Status Code: {plex_response.status_code}")
-
-# # Error handling for when we fail to connect
-# except requests.exceptions.ConnectTimeout:
-#     print("Error: Connection timed out! Check if server is on and using the right IP")
-# except requests.exceptions.RequestException as e:
-#     print(f"A general network error occurred: {e}")
