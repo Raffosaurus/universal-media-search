@@ -3,7 +3,38 @@ import requests
 from dotenv import load_dotenv
 from src.models import SearchResult
 
+# Helper function -> search_plex() - look up and return available seasons
+def get_show_seasons(rating_key: str, plex_url: str, plex_headers: dict) -> list:
+    # Set up plex season search URL
+    season_url = f"{plex_url}/library/metadata/{rating_key}/children"
+    media_seasons = [] # season # results from Plex after parsing
 
+    # Test for crashes while trying to connect
+    try:
+        # Try to connect and retreive data from Plex server
+        season_response = requests.get(season_url, headers=plex_headers, timeout=5)
+        # If we connect successfully...
+        if season_response.status_code == 200:
+            season_data = season_response.json()
+            # Look in the correct area for season details
+            season_hubs = season_data["MediaContainer"]["Metadata"]
+            for s_hub in season_hubs:
+                season_num = s_hub.get("index") # Parse the season number
+                if season_num and season_num > 0: # Plex uses 'season 0' as bonus features/extras - ignore these 
+                    media_seasons.append(str(season_num))
+
+        else:
+            print(f"Whoopsie! Server error getting seasons... \nStatus code: {season_response.status_code}")
+                
+    except requests.exceptions.ConnectTimeout:
+        print("Error: Connection timed out! Check if server is on and using the right IP")
+    except requests.exceptions.RequestException as e:
+        print(f'Server error while trying to get season data: {e}')
+
+    return media_seasons
+
+
+# Main plex search function
 def search_plex(query: str):
     # Open and load .env variables into temp memory
     load_dotenv()
@@ -26,31 +57,41 @@ def search_plex(query: str):
 
     # Setup plex search url and console notification
     plex_url = f"{PLEX_URL}/hubs/search"
-    # REMOVE -----> print(f'Attempting Plex search for "{search_parameters["query"]}"...')
 
     parsed_results = [] # Results from Plex (after formatting)
     # Account for crashes while connecting
     try:
         # Attempt to connect and retrieve data from Plex server
-        plex_response = requests.get(plex_url, headers=plex_headers, params=search_parameters, timeout=6)
+        plex_response = requests.get(plex_url, headers=plex_headers, params=search_parameters, timeout=5)
         # If we connected successfully...
         if plex_response.status_code == 200:
             data = plex_response.json()
-            # REMOVE -----> print("Great success! Here are the results:")
+
             # Clean up `data` into something legible
-            hubs = data["MediaContainer"]["Hub"] # media information is stored here, make a list of all `Hub`'s
+            hubs = data["MediaContainer"]["Hub"] # media information is stored here - list of all `Hub`'s
             for hub in hubs:
+                hub_type = hub.get("type") # Look up the media type
+                if hub_type not in ["movie", "show"]: # Media type filter
+                    continue
                 if "Metadata" in hub: # Check hub isn't empty so we don't cause a crash
                     for media in hub["Metadata"]:
                         media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
                         media_year = media.get("year", "Unknown")
                         media_type = media.get("type", "Unknown")
+                        media_seasons = []
+                        if hub_type == "show" and media.get("ratingKey"):
+                            media_seasons = get_show_seasons(media.get("ratingKey"), PLEX_URL, plex_headers)
+                        
+                        formatted_media_seasons = ", ".join(media_seasons)
                         # Use our `SearchResult` class to hold organized data
-                        media_result = SearchResult(title=media_title, year=media_year, media_type=media_type, source="Plex")
+                        media_result = SearchResult(
+                            title=media_title,
+                            year=media_year,
+                            media_type=media_type,
+                            source="Plex",
+                            seasons=formatted_media_seasons)
                         # Add to our `parsed_results` list
                         parsed_results.append(media_result)
-            # REMOVE -----> for result in parsed_results:
-                # REMOVE -----> print(f"• {result.title} ({result.year}) - {result.media_type} [{result.source}]")
 
         # ...and if we connected but there was an error
         else:

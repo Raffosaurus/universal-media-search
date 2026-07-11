@@ -14,7 +14,9 @@ def main():
     if plex_results:
         print("Plex Results\n‾‾‾‾‾‾‾‾‾‾‾‾")
         for result in plex_results:
-            print(f"• {result.title} ({result.year}) - {result.media_type} [{result.source}]")
+            # Check if there are seasons (for shows):
+            seasons_info = f" - seasons: {result.seasons}" if result.seasons else ""
+            print(f"• {result.title} ({result.year}) - {result.media_type}{seasons_info} [{result.source}]")
         print("_____________________________________")
     else:
         print("• No results found on Plex...")
