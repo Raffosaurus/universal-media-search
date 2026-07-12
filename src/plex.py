@@ -3,21 +3,34 @@ import requests
 from dotenv import load_dotenv
 from src.models import SearchResult
 
-# Helper function -> search_plex() - look up and return available seasons
-def get_show_seasons(rating_key: str, plex_url: str, plex_headers: dict) -> list:
+#================
+# Global setup
+load_dotenv() # Open and load .env variables into temp memory
+PLEX_URL = os.getenv("PLEX_URL") # Grab .env variables out of temp memory and assign locally
+PLEX_TOKEN = os.getenv("PLEX_TOKEN")
+
+# Set up instructions for using 'requests' when accessing the Plex server - needs to be dictionary
+PLEX_HEADERS = {
+    "Accept": "application/json",
+    "X-Plex-Token": PLEX_TOKEN
+}
+#================
+
+# Helper function -> parse_plex_data() - look up and return available seasons
+def get_show_seasons(rating_key: str) -> list:
     # Set up plex season search URL
-    season_url = f"{plex_url}/library/metadata/{rating_key}/children"
-    media_seasons = [] # season # results from Plex after parsing
+    season_url = f"{PLEX_URL}/library/metadata/{rating_key}/children"
+    media_seasons = [] # season results from Plex after formatting
 
     # Test for crashes while trying to connect
     try:
         # Try to connect and retreive data from Plex server
-        season_response = requests.get(season_url, headers=plex_headers, timeout=5)
+        season_response = requests.get(season_url, headers=PLEX_HEADERS, timeout=5)
         # If we connect successfully...
         if season_response.status_code == 200:
             season_data = season_response.json()
             # Look in the correct area for season details
-            season_hubs = season_data["MediaContainer"]["Metadata"]
+            season_hubs = season_data.get("MediaContainer", {}).get("Metadata", [])
             for s_hub in season_hubs:
                 season_num = s_hub.get("index") # Parse the season number
                 if season_num and season_num > 0: # Plex uses 'season 0' as bonus features/extras - ignore these 
@@ -33,22 +46,40 @@ def get_show_seasons(rating_key: str, plex_url: str, plex_headers: dict) -> list
 
     return media_seasons
 
+# Helper funciton -> search_plex() - clean up `data` into sometihng legible
+def parse_plex_data(data: dict) -> list:
+    parsed_results = [] # Results from Plex (after formatting)
+    # Access Hub list in the Plex JSON dictionary safely - no crashes
+    hubs = data.get("MediaContainer", {}).get("Hub", [])
+
+    for hub in hubs:
+        hub_type = hub.get("type") # Look up the media type
+        if hub_type not in ["movie", "show"]: # Media type filter
+            continue
+        if "Metadata" in hub: # Check hub isn't empty so we don't cause a crash
+            for media in hub["Metadata"]:
+                media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
+                media_year = media.get("year", "Unknown")
+                media_type = media.get("type", "Unknown")
+                media_seasons = []
+                if hub_type == "show" and media.get("ratingKey"):
+                    media_seasons = get_show_seasons(media.get("ratingKey"))
+                
+                formatted_media_seasons = ", ".join(media_seasons)
+                # Use our `SearchResult` class to hold organized data
+                media_result = SearchResult(
+                    title=media_title,
+                    year=media_year,
+                    media_type=media_type,
+                    source="Plex",
+                    seasons=formatted_media_seasons)
+                # Add to our `parsed_results` list
+                parsed_results.append(media_result)
+    return parsed_results
+    
 
 # Main plex search function
 def search_plex(query: str):
-    # Open and load .env variables into temp memory
-    load_dotenv()
-
-    # Grab .env variables out of temp memory and assign locally
-    PLEX_URL = os.getenv("PLEX_URL")
-    PLEX_TOKEN = os.getenv("PLEX_TOKEN")
-
-    # Set up instructions for using 'requests' when accessing the Plex server - needs to be dictionary
-    plex_headers = {
-        "Accept": "application/json",
-        "X-Plex-Token": PLEX_TOKEN
-    }
-
     # Search filter setup - needs to be a dictionary
     search_parameters = {
         "query": query,  # our input when calling this function
@@ -62,36 +93,12 @@ def search_plex(query: str):
     # Account for crashes while connecting
     try:
         # Attempt to connect and retrieve data from Plex server
-        plex_response = requests.get(plex_url, headers=plex_headers, params=search_parameters, timeout=5)
+        plex_response = requests.get(plex_url, headers=PLEX_HEADERS, params=search_parameters, timeout=5)
         # If we connected successfully...
         if plex_response.status_code == 200:
             data = plex_response.json()
 
-            # Clean up `data` into something legible
-            hubs = data["MediaContainer"]["Hub"] # media information is stored here - list of all `Hub`'s
-            for hub in hubs:
-                hub_type = hub.get("type") # Look up the media type
-                if hub_type not in ["movie", "show"]: # Media type filter
-                    continue
-                if "Metadata" in hub: # Check hub isn't empty so we don't cause a crash
-                    for media in hub["Metadata"]:
-                        media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
-                        media_year = media.get("year", "Unknown")
-                        media_type = media.get("type", "Unknown")
-                        media_seasons = []
-                        if hub_type == "show" and media.get("ratingKey"):
-                            media_seasons = get_show_seasons(media.get("ratingKey"), PLEX_URL, plex_headers)
-                        
-                        formatted_media_seasons = ", ".join(media_seasons)
-                        # Use our `SearchResult` class to hold organized data
-                        media_result = SearchResult(
-                            title=media_title,
-                            year=media_year,
-                            media_type=media_type,
-                            source="Plex",
-                            seasons=formatted_media_seasons)
-                        # Add to our `parsed_results` list
-                        parsed_results.append(media_result)
+            parsed_results = parse_plex_data(data)
 
         # ...and if we connected but there was an error
         else:
