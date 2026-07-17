@@ -72,7 +72,8 @@ def parse_plex_data(data: dict) -> list:
                     year=media_year,
                     media_type=media_type,
                     source="Plex",
-                    seasons=formatted_media_seasons)
+                    seasons=formatted_media_seasons
+                )
                 # Add to our `parsed_results` list
                 parsed_results.append(media_result)
     return parsed_results

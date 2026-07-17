@@ -1,4 +1,5 @@
 from src.plex import search_plex
+from src.tmdb import search_tmdb
 
 def main():
     # Intro label
@@ -20,9 +21,15 @@ def main():
         print("_____________________________________")
     else:
         print("• No results found on Plex...")
-    
+
+    tmdb_results = search_tmdb(user_search)
+    if tmdb_results:
+        print("TMDB Results\n‾‾‾‾‾‾‾‾‾‾‾‾")
+        for result in tmdb_results:
+            print(f"• {result.title} ({result.year}) - {result.media_type} [{result.source}]")
+        print("_____________________________________")
+    else:
+        print("• No results found on TMDB...")
 
 if __name__ == "__main__":
     main()
-
-
