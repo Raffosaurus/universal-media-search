@@ -47,7 +47,7 @@ def get_show_seasons(rating_key: str) -> list:
     return media_seasons
 
 # Helper funciton -> search_plex() - clean up `data` into sometihng legible
-def parse_plex_data(data: dict) -> list:
+def parse_plex_data(data: dict, query: str) -> list:
     parsed_results = [] # Results from Plex (after formatting)
     # Access Hub list in the Plex JSON dictionary safely - no crashes
     hubs = data.get("MediaContainer", {}).get("Hub", [])
@@ -59,8 +59,12 @@ def parse_plex_data(data: dict) -> list:
         if "Metadata" in hub: # Check hub isn't empty so we don't cause a crash
             for media in hub["Metadata"]:
                 media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
+                media_sort_title = media.get("titleSort", "") # needed for filtering
+                if query not in media_title.lower() and query not in media_sort_title.lower(): # Only return results with query in the Title or Sort Title
+                    continue
                 media_year = media.get("year", "Unknown")
                 media_type = media.get("type", "Unknown")
+                media_type = "tv" if media_type == "show" else media_type # Unify output to match TMDB - looks cleaner in console output
                 media_seasons = []
                 if hub_type == "show" and media.get("ratingKey"):
                     media_seasons = get_show_seasons(media.get("ratingKey"))
@@ -84,7 +88,7 @@ def search_plex(query: str):
     # Search filter setup - needs to be a dictionary
     search_parameters = {
         "query": query,  # our input when calling this function
-        "limit": 5          # limit results in case there are too many, ****ADJUST LATER****
+        "limit": 6          # limit results in case there are too many
     }
 
     # Setup plex search url and console notification
@@ -99,7 +103,7 @@ def search_plex(query: str):
         if plex_response.status_code == 200:
             data = plex_response.json()
 
-            parsed_results = parse_plex_data(data)
+            parsed_results = parse_plex_data(data, query)
 
         # ...and if we connected but there was an error
         else:
