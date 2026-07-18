@@ -15,9 +15,7 @@ def main():
     if plex_results:
         print("Plex Results\n‾‾‾‾‾‾‾‾‾‾‾‾")
         for result in plex_results:
-            # Check if there are seasons (for shows):
-            seasons_info = f" - seasons: {result.seasons}" if result.seasons else ""
-            print(f"• {result.title} ({result.year}) - {result.media_type}{seasons_info} [{result.source}]")
+            print(result)
         print("_____________________________________\n")
     else:
         print("• No results found on Plex...")
@@ -26,7 +24,7 @@ def main():
     if tmdb_results:
         print("TMDB Results\n‾‾‾‾‾‾‾‾‾‾‾‾")
         for result in tmdb_results:
-            print(f"• {result.title} ({result.year}) - {result.media_type} [{result.source}]")
+            print(result)
         print("_____________________________________\n")
     else:
         print("• No results found on TMDB...")
