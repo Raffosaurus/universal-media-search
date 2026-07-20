@@ -3,15 +3,50 @@ import os
 from dotenv import load_dotenv
 from src.models import SearchResult
 
+# ==========================================
+# USER CONFIGURATION: STREAMING SERVICES
+#
+# Add the TMDB provider IDs to `MY_PROVIDER_IDS` for the streaming services you subscribe to.
+# 
+# Common US IDs:
+# 8    = Netflix
+# 9    = Amazon Prime Video
+# 15   = Hulu
+# 337  = Disney+
+# 350  = Apple TV
+# 1899 = HBO Max
+# ==========================================
+MY_PROVIDER_IDS = [8, 9]
+
 load_dotenv()
 TMDB_API = os.getenv("TMDB_API_KEY")
+
+def get_stream_providers(item_id: int, media_type: str):
+    provider_url = f"https://api.themoviedb.org/3/{media_type}/{item_id}/watch/providers"
+
+    search_parameters = {"api_key": TMDB_API,}
+
+    providers = {}
+    try:
+        tmdb_response = requests.get(url=provider_url, params=search_parameters, timeout=(3.05, 15))
+        tmdb_response.raise_for_status()
+
+        providers = tmdb_response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"TMDB search failed: {e}")
+        return None
+    
+    return providers
+
+
+
 
 def parse_tmdb_data(data: dict):
     parsed_results = [] # Results from TMDB after formatting
 
     items = data.get("results", []) # TMDB JSON lists search result items in "results" dict
 
-    for item in items:
+    for item in items[:3]:
         media_type = item.get("media_type") # get the media type of each results in order to use filter
         if media_type not in ["movie", "tv"]: # filter our any result that isn't a movie or TV show
             continue
@@ -27,6 +62,12 @@ def parse_tmdb_data(data: dict):
             media_title = item.get("name", "Unknown Title")
             full_date = item.get("first_air_date", "")
         media_date = full_date[:4] if full_date else "Unknown"
+
+        item_id = item.get("id")
+        provider_data = get_stream_providers(item_id=item_id, media_type=media_type)
+        print(f"\n--- Providers for {media_title} ---")
+        print(provider_data)
+
         # Use our `SearchResult` class to hold organized data
         media_result = SearchResult(
             title=media_title,
