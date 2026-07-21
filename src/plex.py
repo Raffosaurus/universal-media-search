@@ -1,5 +1,6 @@
 import os
 import requests
+import re
 from dotenv import load_dotenv
 from src.models import SearchResult
 
@@ -15,6 +16,13 @@ PLEX_HEADERS = {
     "X-Plex-Token": PLEX_TOKEN
 }
 #================
+
+# Helper funciton -> parse_plex_data - title normalization/sanitation so the matches work properly
+def sanitize_title(text: str) -> str:
+    text = text.lower()
+    # Strip out anything that is not alphanumeric or whitespace
+    clean_text = re.sub(r'[^\w\s]', '', text)
+    return clean_text
 
 # Helper function -> parse_plex_data() - look up and return available seasons
 def get_show_seasons(rating_key: str) -> list:
@@ -60,7 +68,12 @@ def parse_plex_data(data: dict, query: str) -> list:
             for media in hub["Metadata"]:
                 media_title = media.get("title", "Unknown") # use .get() in case of missing metadata - no crashes
                 media_sort_title = media.get("titleSort", "") # needed for filtering
-                if query not in media_title.lower() and query not in media_sort_title.lower(): # Only return results with query in the Title or Sort Title
+                # Clean up all strings before comparing
+                safe_query = sanitize_title(query)
+                safe_title = sanitize_title(media_title)
+                safe_sort_title = sanitize_title(media_sort_title)
+                # Compare sanitized strings
+                if safe_query not in safe_title and safe_query not in safe_sort_title: # Only return results with query in the Title or Sort Title
                     continue
                 media_year = media.get("year", "Unknown")
                 media_type = media.get("type", "Unknown")
