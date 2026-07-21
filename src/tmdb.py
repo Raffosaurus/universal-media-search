@@ -17,6 +17,7 @@ from src.models import SearchResult
 # 1899 = HBO Max
 # ==========================================
 MY_PROVIDER_IDS = [8, 9]
+HOME_REGION = "US"
 
 load_dotenv()
 TMDB_API = os.getenv("TMDB_API_KEY")
@@ -65,8 +66,27 @@ def parse_tmdb_data(data: dict):
 
         item_id = item.get("id")
         provider_data = get_stream_providers(item_id=item_id, media_type=media_type)
-        print(f"\n--- Providers for {media_title} ---")
-        print(provider_data)
+        all_countries = provider_data.get("results", {})
+        available_on = {}
+        for country_code, country_data in all_countries.items():
+            streaming_services = country_data.get("flatrate", [])
+
+            for service in streaming_services:
+                if service.get("provider_id") in MY_PROVIDER_IDS:
+                    provider_name = service.get("provider_name")
+
+                    if provider_name not in available_on:
+                        available_on[provider_name] = []
+                    
+                    available_on[provider_name].append(country_code)
+        for service, countries in available_on.items():
+            if HOME_REGION in countries:
+                available_on[service] = [HOME_REGION]
+            else:
+                available_on[service] = countries[:4]
+        
+        if not available_on:
+            continue
 
         # Use our `SearchResult` class to hold organized data
         media_result = SearchResult(
@@ -74,6 +94,7 @@ def parse_tmdb_data(data: dict):
             year=media_date,
             media_type=media_type,
             source="TMDB",
+            streaming_on=available_on
         )
 
         parsed_results.append(media_result)
