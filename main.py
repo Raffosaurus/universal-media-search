@@ -22,7 +22,7 @@ def main():
 
     if plex_results:
         for result in plex_results:
-            print(result)
+            console.print(result, highlight=False)
     else:
         console.print("[subtext]• No results found on Plex...[/subtext]")
     console.print(f"[plex_brand]{result_endline}[/plex_brand]\n")
@@ -33,7 +33,7 @@ def main():
     console.print(f"[tmdb_brand]{tmdb_header}[/tmdb_brand]\n")
     if tmdb_results:
         for result in tmdb_results:
-            print(result)
+            console.print(result, highlight=False)
     else:
         console.print("[subtext]• No results found on TMDB...[/subtext]")
     console.print(f"[tmdb_brand]{result_endline}[/tmdb_brand]\n")

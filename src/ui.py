@@ -8,7 +8,15 @@ custom_theme = Theme({
     "plex_brand": "bold #E5A00D",
     "tmdb_brand": "bold #01B4E4",
     "accent": "#FC8038",
+    "seasons": "dim italic #FC8038",
     "bg_dark": "#4E249C",
+    "title": "bold white",
+    "netflix": "bold #E50914",
+    "prime": "bold #00A8E1",
+    #"hulu": "bold #1CE783",
+    #"disney": "bold #113CCF",
+    #"max": "bold #9A2EE0", 
+    #"apple": "bold #D6D6D6",
 })
 
 # Iinitialize console:
@@ -36,7 +44,7 @@ def print_hero_banner() -> int:
     max_len = max(len(line) for line in lines)
 
     top_bar = " WELCOME TO ".center(max_len, '━')
-    console.print(f"[#FC8038]{top_bar}[/#FC8038]")
+    console.print(f"\n[#FC8038]{top_bar}[/#FC8038]")
 
     for i, line in enumerate(lines):
         color = gradient[i % len(gradient)]
